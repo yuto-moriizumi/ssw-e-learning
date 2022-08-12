@@ -1,0 +1,59 @@
+version: "3"
+services:
+  front:
+    image: node:14
+    volumes:
+      - ./front:/usr/src
+      - front_modules:/usr/src/node_modules #node_modulesはコンテナ内部で用意します
+    working_dir: "/usr/src"
+    command: sh -c "yarn install && yarn start"
+    ports:
+      - "80:3000"
+    environment:
+      REACT_APP_SERVER_URL: "http://localhost:3000"
+      # REACT_APP_OER_APP_ID: $REACT_APP_OER_APP_ID
+  api:
+    image: node:14
+    container_name: api-container
+    hostname: api-container
+    volumes:
+      - ./api/:/usr/src/
+      - api_modules:/usr/src/node_modules #node_modulesはコンテナ内部で用意します
+    working_dir: "/usr/src"
+    ports:
+      - "3000:3000"
+    environment:
+      RDS_HOSTNAME: "db"
+      RDS_USERNAME: "root"
+      RDS_PASSWORD: "docker"
+      RDS_DB_NAME: "ssw_e_learning"
+      CLIENT_ORIGIN_URL: "http://localhost"
+    command: sh -c "yarn install && yarn dev"
+    depends_on:
+      - db
+  db:
+    image: mysql:8
+    container_name: db-container
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: docker
+      TZ: "Asia/Tokyo"
+    volumes:
+      - ./db/data:/var/lib/mysql #データ永続化
+      - ./db/sql:/docker-entrypoint-initdb.d #起動時sqlフォルダ内のsqlファイルを実行
+  # compose up しないとphpmyadminに入れない(理由不明)
+  phpmyadmin:
+    image: phpmyadmin #fpmやalpineタグは別途httpサーバが必要
+    container_name: phpmyadmin
+    environment:
+      - PMA_ARBITRARY=1
+    ports:
+      - 8080:80
+    volumes:
+      - "./phpmyadmin:/sessions"
+    depends_on:
+      - db
+volumes:
+  front_modules:
+  api_modules:
